@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, User, BarChart2 } from 'lucide-react';
+import APIUsageIndicator from './APIUsageIndicator';
 
 /**
  * Navigation Component
@@ -31,6 +32,7 @@ const Navigation = ({ searchQuery, onSearchChange, onSearchSubmit }) => {
                 />
                 <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
               </form>
+              <APIUsageIndicator />
               <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
                 <User size={18} />
               </div>
