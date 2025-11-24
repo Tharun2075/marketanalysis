@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const API_KEY = process.env.VITE_FMP_API_KEY;
-const BASE_URL = 'https://financialmodelingprep.com/api';
+const BASE_URL = 'https://financialmodelingprep.com/stable';
 
 // Track API calls
 let apiCallCount = 0;
@@ -32,14 +32,13 @@ async function testEndpoint(name, url) {
       'x-ratelimit-remaining': response.headers.get('x-ratelimit-remaining'),
     });
 
-    const text = await response.text();
-
     if (!response.ok) {
-      console.log(`❌ Error Response:`, text);
-      return { error: text, status: response.status };
+      const errorText = await response.text();
+      console.log(`❌ Error Response:`, errorText);
+      return { error: errorText, status: response.status };
     }
 
-    const data = JSON.parse(text);
+    const data = await response.json();
     console.log(`✅ Success! Data type:`, Array.isArray(data) ? `Array[${data.length}]` : typeof data);
     console.log(`📋 Sample Data:`, JSON.stringify(data, null, 2).substring(0, 500));
 
@@ -63,53 +62,54 @@ async function runTests() {
 
   const ticker = 'AAPL';
 
-  // Test 1: API Availability (simple profile endpoint)
+  // Test 1: Company Profile (stable)
   await testEndpoint(
-    'Company Profile (v3)',
-    `${BASE_URL}/v3/profile/${ticker}?apikey=${API_KEY}`
+    'Company Profile (stable)',
+    `${BASE_URL}/profile?symbol=${ticker}&apikey=${API_KEY}`
   );
 
-  // Test 2: Quote Short
+  // Test 2: Quote Short (stable)
   await testEndpoint(
-    'Quote Short (v3)',
-    `${BASE_URL}/v3/quote-short/${ticker}?apikey=${API_KEY}`
+    'Quote Short (stable)',
+    `${BASE_URL}/quote-short?symbol=${ticker}&apikey=${API_KEY}`
   );
 
-  // Test 3: Quote Full
+  // Test 3: Quote Full (stable)
   await testEndpoint(
-    'Quote Full (v3)',
-    `${BASE_URL}/v3/quote/${ticker}?apikey=${API_KEY}`
+    'Quote Full (stable)',
+    `${BASE_URL}/quote?symbol=${ticker}&apikey=${API_KEY}`
   );
 
-  // Test 4: Historical Price (1 day)
+  // Test 4: Historical Price (stable)
   await testEndpoint(
-    'Historical Price (v3)',
-    `${BASE_URL}/v3/historical-price-full/${ticker}?serietype=line&timeseries=1&apikey=${API_KEY}`
+    'Historical Price EOD Full (stable)',
+    `${BASE_URL}/historical-price-eod/full?symbol=${ticker}&apikey=${API_KEY}`
   );
 
-  // Test 5: Analyst Recommendations
+  // Test 5: Analyst Grades Consensus (stable)
   await testEndpoint(
-    'Analyst Recommendations (v3)',
-    `${BASE_URL}/v3/analyst-stock-recommendations/${ticker}?apikey=${API_KEY}`
+    'Analyst Grades Consensus (stable)',
+    `${BASE_URL}/grades-consensus?symbol=${ticker}&apikey=${API_KEY}`
   );
 
-  // Test 6: Price Target Consensus (v4)
+  // Test 6: Price Target Consensus (stable)
   await testEndpoint(
-    'Price Target Consensus (v4)',
-    `${BASE_URL}/v4/price-target-consensus?symbol=${ticker}&apikey=${API_KEY}`
+    'Price Target Consensus (stable)',
+    `${BASE_URL}/price-target-consensus?symbol=${ticker}&apikey=${API_KEY}`
   );
 
-  // Test 7: Upgrades/Downgrades (v4)
+  // Test 7: Stock Grades/Ratings History (stable)
   await testEndpoint(
-    'Upgrades & Downgrades (v4)',
-    `${BASE_URL}/v4/upgrades-downgrades?symbol=${ticker}&apikey=${API_KEY}`
+    'Stock Grades History (stable)',
+    `${BASE_URL}/grades?symbol=${ticker}&apikey=${API_KEY}`
   );
 
-  // Test 8: Check API usage limit endpoint
-  await testEndpoint(
-    'API Usage Check',
-    `${BASE_URL}/v4/api-usage?apikey=${API_KEY}`
-  );
+  // Test 8: Check API usage limit endpoint (v4 - may not be in stable)
+  // Note: API usage is tracked via dashboard, no stable endpoint found
+  console.log(`\n${'='.repeat(70)}`);
+  console.log(`ℹ️  Note: API usage tracking is available via FMP Dashboard`);
+  console.log(`   Visit: https://site.financialmodelingprep.com/dashboard`);
+  console.log(`${'='.repeat(70)}`);
 
   // Summary
   console.log(`\n${'='.repeat(70)}`);

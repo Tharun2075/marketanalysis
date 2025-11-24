@@ -8,7 +8,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "update-symbols": "node download-symbols-github.js",
+    "update-symbols-global": "node download-symbols-global.js",
+    "build-cache-fmp": "node build-cache-fmp-comprehensive.js basic",
+    "build-cache-fmp:international": "node build-cache-fmp-comprehensive.js international",
+    "build-cache-fmp:comprehensive": "node build-cache-fmp-comprehensive.js comprehensive",
+    "build-cache-fmp:full": "node build-cache-fmp-comprehensive.js full"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

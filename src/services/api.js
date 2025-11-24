@@ -7,7 +7,7 @@ import { getMockData } from './mockData';
 
 // Get API key from environment variable (IMPORTANT: Never hardcode API keys!)
 const API_KEY = import.meta.env.VITE_FMP_API_KEY;
-const BASE_URL = 'https://financialmodelingprep.com/api';
+const BASE_URL = 'https://financialmodelingprep.com/stable';
 
 // API Call Counter (persists in sessionStorage)
 class APICallTracker {
@@ -146,17 +146,17 @@ export const fetchStockData = async (ticker) => {
     const [
       priceShort,
       priceHist,
-      searchData,
+      profileData,
       consensusData,
       targetsData,
       ratingsData
     ] = await Promise.all([
-      safeFetch(`${BASE_URL}/v3/quote-short/${cleanTicker}?apikey=${API_KEY}`),
-      safeFetch(`${BASE_URL}/v3/historical-price-full/${cleanTicker}?serietype=line&timeseries=1&apikey=${API_KEY}`),
-      safeFetch(`${BASE_URL}/v3/search?query=${cleanTicker}&limit=1&apikey=${API_KEY}`),
-      safeFetch(`${BASE_URL}/v3/analyst-stock-recommendations/${cleanTicker}?apikey=${API_KEY}`),
-      safeFetch(`${BASE_URL}/v4/price-target-consensus?symbol=${cleanTicker}&apikey=${API_KEY}`),
-      safeFetch(`${BASE_URL}/v4/upgrades-downgrades?symbol=${cleanTicker}&apikey=${API_KEY}`)
+      safeFetch(`${BASE_URL}/quote-short?symbol=${cleanTicker}&apikey=${API_KEY}`),
+      safeFetch(`${BASE_URL}/historical-price-eod/full?symbol=${cleanTicker}&from=&to=&apikey=${API_KEY}`),
+      safeFetch(`${BASE_URL}/profile?symbol=${cleanTicker}&apikey=${API_KEY}`),
+      safeFetch(`${BASE_URL}/grades-consensus?symbol=${cleanTicker}&apikey=${API_KEY}`),
+      safeFetch(`${BASE_URL}/price-target-consensus?symbol=${cleanTicker}&apikey=${API_KEY}`),
+      safeFetch(`${BASE_URL}/grades?symbol=${cleanTicker}&apikey=${API_KEY}`)
     ]);
 
     // Check if we got critical data (price and consensus)
@@ -171,36 +171,50 @@ export const fetchStockData = async (ticker) => {
 
     // --- PARSE PRICE DATA ---
     let currentPrice = 0;
-    if (Array.isArray(priceShort) && priceShort.length > 0) {
+    let priceChange = 0;
+    let priceChangePercent = 0;
+
+    // Try profile first (has price + change data)
+    if (Array.isArray(profileData) && profileData.length > 0 && profileData[0].price) {
+      currentPrice = profileData[0].price;
+      priceChange = profileData[0].change || 0;
+      priceChangePercent = profileData[0].changePercentage || 0;
+      console.log('[API] ✓ Price from profile');
+    } else if (Array.isArray(priceShort) && priceShort.length > 0) {
       currentPrice = priceShort[0].price;
+      priceChange = priceShort[0].change || 0;
       console.log('[API] ✓ Price from quote-short');
-    } else if (priceHist?.historical?.length > 0) {
-      currentPrice = priceHist.historical[0].close;
+    } else if (Array.isArray(priceHist) && priceHist.length > 0) {
+      // Note: Stable API returns array directly, not nested in historical
+      currentPrice = priceHist[0].close;
+      priceChange = priceHist[0].change || 0;
+      priceChangePercent = priceHist[0].changePercent || 0;
       console.log('[API] ✓ Price from historical');
     }
 
     // --- PARSE COMPANY INFO ---
-    const searchObj = Array.isArray(searchData) && searchData.length > 0
-      ? searchData[0]
-      : { name: cleanTicker, currency: 'USD' };
+    const profileObj = Array.isArray(profileData) && profileData.length > 0
+      ? profileData[0]
+      : { companyName: cleanTicker, currency: 'USD' };
 
     // --- PARSE CONSENSUS DATA ---
     const recentConsensus = Array.isArray(consensusData) && consensusData.length > 0
       ? consensusData[0]
       : {
-          analystStrongBuy: 0,
-          analystBuy: 0,
-          analystHold: 0,
-          analystSell: 0,
-          analystStrongSell: 0
+          strongBuy: 0,
+          buy: 0,
+          hold: 0,
+          sell: 0,
+          strongSell: 0
         };
 
+    // Handle both stable API (strongBuy, buy, etc.) and legacy API (analystStrongBuy, etc.) field names
     const breakdown = {
-      strongBuy: recentConsensus.analystStrongBuy || 0,
-      buy: recentConsensus.analystBuy || 0,
-      hold: recentConsensus.analystHold || 0,
-      sell: recentConsensus.analystSell || 0,
-      strongSell: recentConsensus.analystStrongSell || 0
+      strongBuy: recentConsensus.strongBuy || recentConsensus.analystStrongBuy || 0,
+      buy: recentConsensus.buy || recentConsensus.analystBuy || 0,
+      hold: recentConsensus.hold || recentConsensus.analystHold || 0,
+      sell: recentConsensus.sell || recentConsensus.analystSell || 0,
+      strongSell: recentConsensus.strongSell || recentConsensus.analystStrongSell || 0
     };
 
     const totalAnalysts = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
@@ -226,15 +240,21 @@ export const fetchStockData = async (ticker) => {
 
     // --- PARSE RATINGS HISTORY ---
     const safeRatingsData = Array.isArray(ratingsData) ? ratingsData : [];
-    const parsedRatings = safeRatingsData.slice(0, 15).map((r, index) => ({
-      id: index,
-      date: r.publishedDate ? r.publishedDate.split('T')[0] : 'N/A',
-      firm: r.gradingCompany || 'Unknown Firm',
-      analyst: 'Analyst', // FMP doesn't provide individual analyst names in this endpoint
-      action: r.action || (r.newGrade === r.previousGrade ? 'Reiterates' : 'Update'),
-      rating: r.newGrade || '-',
-      target: r.priceTarget || '-'
-    }));
+    const parsedRatings = safeRatingsData.slice(0, 15).map((r, index) => {
+      // Stable API uses: date, gradingCompany, previousGrade, newGrade, action
+      // Note: Stable API doesn't include priceTarget in grades endpoint
+      const action = r.action || (r.newGrade === r.previousGrade ? 'maintain' : 'update');
+
+      return {
+        id: index,
+        date: r.date || 'N/A',
+        firm: r.gradingCompany || r.company || 'Unknown Firm',
+        analyst: 'Analyst', // FMP doesn't provide individual analyst names
+        action: action.charAt(0).toUpperCase() + action.slice(1), // Capitalize first letter
+        rating: r.newGrade || r.grade || '-',
+        target: r.priceTarget || '-' // May not be available in stable grades endpoint
+      };
+    });
 
     console.log(`[API] ✅ Successfully loaded data for ${cleanTicker}`);
     console.log(`[API] 📊 Price: $${currentPrice} | Analysts: ${totalAnalysts} | Consensus: ${consensusText}`);
@@ -242,11 +262,11 @@ export const fetchStockData = async (ticker) => {
     return {
       isDemo: false,
       symbol: cleanTicker,
-      name: searchObj.name || cleanTicker,
+      name: profileObj.companyName || cleanTicker,
       price: currentPrice,
-      currency: searchObj.currency || 'USD',
-      change: 0, // Note: Change requires intraday data (premium API)
-      changePercent: 0,
+      currency: profileObj.currency || 'USD',
+      change: priceChange,
+      changePercent: priceChangePercent,
       consensus: consensusText,
       analystsCount: totalAnalysts,
       breakdown,
@@ -317,4 +337,144 @@ export const logAPIUsage = () => {
   console.log(`📈 Usage: ${stats.percentage}% of daily limit`);
   console.log(`🔄 Resets: ${stats.resetTime}`);
   console.log('='.repeat(50) + '\n');
+};
+
+/**
+ * Determine asset categories based on exchange and symbol patterns
+ * @param {Object} result - Search result with symbol, exchange, name, country
+ * @returns {Array<string>} Array of category tags
+ */
+const categorizeAsset = (result) => {
+  const categories = [];
+  const { symbol, exchange, name, country } = result;
+
+  // Primary exchange-based categorization
+  const exchangeCategories = {
+    // US Exchanges
+    'NYSE': 'NYSE',
+    'NASDAQ': 'NASDAQ',
+    'AMEX': 'AMEX',
+
+    // International Exchanges
+    'ASX': 'ASX',           // Australia
+    'LSE': 'LSE',           // London
+    'HKEX': 'HKEX',         // Hong Kong
+    'TSE': 'TSE',           // Tokyo
+    'NSE': 'NSE',           // India (National)
+    'BSE': 'BSE',           // India (Bombay)
+    'TSX': 'TSX',           // Toronto
+
+    // Special
+    'INDEX': 'Index',
+    'OTC': 'OTC',
+    'CRYPTO': 'Crypto'
+  };
+
+  if (exchangeCategories[exchange]) {
+    categories.push(exchangeCategories[exchange]);
+  }
+
+  // Detect by symbol patterns
+  if (symbol.startsWith('^')) categories.push('Index');
+  if (symbol.includes('USD') || symbol.includes('BTC') || symbol.includes('ETH')) categories.push('Crypto');
+  if (symbol.endsWith('.L')) categories.push('LSE');
+  if (symbol.endsWith('.HK')) categories.push('HKEX');
+  if (symbol.endsWith('.TO')) categories.push('TSX');
+  if (symbol.endsWith('.AX')) categories.push('ASX');
+  if (symbol.includes('-')) categories.push('Warrant');
+
+  // Detect ETFs by name (works across all exchanges)
+  if (name && (name.includes('ETF') || name.includes('Fund') || name.includes('Trust'))) {
+    categories.push('ETF');
+  }
+
+  // Detect common instrument types by name
+  if (name) {
+    const nameLower = name.toLowerCase();
+    if (nameLower.includes('bond') || nameLower.includes('note')) categories.push('Bond');
+    if (nameLower.includes('reit')) categories.push('REIT');
+    if (nameLower.includes('index') || nameLower.includes('spdr') || nameLower.includes('ishares')) {
+      categories.push('Index Fund');
+    }
+  }
+
+  // Add country tag for international exchanges
+  if (country && country !== 'United States') {
+    categories.push(country);
+  }
+
+  // If no categories, default to Stock
+  if (categories.length === 0) {
+    categories.push('Stock');
+  }
+
+  return [...new Set(categories)]; // Remove duplicates
+};
+
+// Import cached symbol data
+let symbolsCache = null;
+
+/**
+ * Load symbols cache (lazy loaded)
+ * @returns {Promise<Array>} Cached symbols array
+ */
+const loadSymbolsCache = async () => {
+  if (symbolsCache) return symbolsCache;
+
+  try {
+    const response = await fetch('/src/data/symbols-cache.json');
+    symbolsCache = await response.json();
+    console.log(`[API] ✅ Loaded ${symbolsCache.length} symbols from cache`);
+    return symbolsCache;
+  } catch (error) {
+    console.error('[API] ❌ Failed to load symbols cache:', error);
+    return [];
+  }
+};
+
+/**
+ * Search for ticker symbols with autocomplete (LOCAL SEARCH - NO API CALLS!)
+ * @param {string} query - Search query (partial ticker or company name)
+ * @param {number} limit - Max results to return (default: 5)
+ * @returns {Promise<Array>} Array of search results with categories
+ */
+export const searchTickers = async (query, limit = 5) => {
+  if (!query || query.length < 1) return [];
+
+  const symbols = await loadSymbolsCache();
+  if (symbols.length === 0) return [];
+
+  const queryUpper = query.toUpperCase();
+  console.log(`[API] 🔍 Local search for: "${query}" (${symbols.length} symbols)`);
+
+  // Search algorithm:
+  // 1. Exact symbol matches first
+  // 2. Symbol starts with query
+  // 3. Company name contains query
+  const results = symbols
+    .map(symbol => {
+      const symbolMatch = symbol.symbol.toUpperCase();
+      const nameMatch = (symbol.name || '').toUpperCase();
+
+      let score = 0;
+      if (symbolMatch === queryUpper) score = 1000; // Exact match
+      else if (symbolMatch.startsWith(queryUpper)) score = 500; // Starts with
+      else if (nameMatch.includes(queryUpper)) score = 100; // Name contains
+
+      return { ...symbol, score };
+    })
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(result => ({
+      symbol: result.symbol,
+      name: result.name,
+      exchange: result.exchange,
+      exchangeFullName: result.exchangeFullName,
+      currency: result.currency,
+      categories: categorizeAsset(result)
+    }));
+
+  console.log(`[API] ✅ Found ${results.length} local results (0 API calls used!)`);
+  return results;
 };

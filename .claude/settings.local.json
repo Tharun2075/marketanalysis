@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node build-symbol-cache.js:*)",
+      "Bash(node download-symbols-github.js:*)",
+      "Bash(node -e:*)",
+      "Bash(node download-symbols-global.js:*)",
+      "Bash(node build-cache-fmp-comprehensive.js:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
