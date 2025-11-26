@@ -135,8 +135,10 @@ async function downloadGlobalSymbols() {
         if (symbol && symbol !== '' && symbol !== '--') {
           const key = `${symbol}-${exchangeCode}`;
 
-          // Only add if we don't already have it from US source
-          if (!allSymbols.has(key)) {
+          // Always update with CSV data which has proper company names
+          const existing = allSymbols.get(key);
+          if (!existing || existing.name === existing.symbol) {
+            // Add new or update if existing only has ticker as name
             allSymbols.set(key, {
               symbol: symbol,
               name: name || symbol,
@@ -145,7 +147,7 @@ async function downloadGlobalSymbols() {
               currency: getCurrency(exchangeCode.toLowerCase()),
               country: getCountry(exchangeCode.toLowerCase())
             });
-            addedCount++;
+            if (!existing) addedCount++;
           }
         }
       });

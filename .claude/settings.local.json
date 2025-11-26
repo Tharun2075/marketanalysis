@@ -6,7 +6,20 @@
       "Bash(node -e:*)",
       "Bash(node download-symbols-global.js:*)",
       "Bash(node build-cache-fmp-comprehensive.js:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Add global exchange coverage with FMP-based symbol caching\n\n## Major Changes\n\n### 1. Global Symbol Cache System\n- Implemented FMP API-based symbol downloading (22+ exchanges)\n- Added GitHub-based fallback for offline usage\n- Created 3 symbol update strategies (basic/comprehensive/full)\n\n### 2. Exchange Coverage\n- **Basic mode (36 API calls)**: ~3,000 symbols from 22+ exchanges\n  - US: NYSE (1,272), NASDAQ (590), AMEX (593)\n  - UK: LSE (135)\n  - Japan: JPX (72)\n  - Australia: ASX (10+)\n  - Germany: FSX, XETRA (63)\n  - Canada: TSX, TSXV\n  - Singapore, Poland, Thailand, and more\n- **GitHub mode (0 API calls)**: 15,176 symbols (US + Australia)\n- **Comprehensive mode (712 calls)**: 15,000+ symbols, 30+ exchanges\n\n### 3. Search Enhancements\n- Zero API calls for autocomplete search\n- Smart categorization by exchange, asset type, country\n- Category badges (NYSE, NASDAQ, LSE, JPX, ETF, REIT, etc.)\n- Keyboard navigation (arrow keys, enter, escape)\n- Debounced search (200ms) for performance\n\n### 4. API Migration\n- Migrated all endpoints from legacy (/api/v3, /api/v4) to /stable\n- Backward compatible response parsing\n- Updated 6 endpoints: quote-short, historical, profile, consensus, targets, grades\n\n### 5. Category Detection Algorithm\n- Exchange-based: NYSE, NASDAQ, AMEX, ASX, LSE, JPX, TSX, etc.\n- Pattern-based: .L (LSE), .HK (HKEX), .AX (ASX), ^ (Index)\n- Name-based: ETF, REIT, Bond, Index Fund detection\n- Country tagging for international exchanges\n\n### New Files\n- `build-cache-fmp-comprehensive.js` - FMP-based cache builder (recommended)\n- `download-symbols-global.js` - GitHub global downloader\n- `download-symbols-github.js` - GitHub US-only downloader\n- `SYMBOL_UPDATE_GUIDE.md` - Comprehensive guide for all approaches\n- `GLOBAL_EXCHANGES.md` - Architecture and technical details\n- `SYMBOL_CACHE.md` - User-facing documentation\n- `src/data/symbols-cache.json` - 2,900 symbols cache (updated via FMP)\n\n### Updated Files\n- `package.json` - Added 4 new npm scripts for cache updates\n- `src/services/api.js` - Enhanced categorization, local search, stable API\n- `src/components/Navigation.jsx` - Complete autocomplete with categories\n- `test-api.js` - Updated to stable API endpoints\n\n### NPM Scripts\n- `npm run build-cache-fmp` - Daily updates (36 calls, recommended)\n- `npm run build-cache-fmp:international` - Weekly (46 calls)\n- `npm run build-cache-fmp:comprehensive` - Monthly (712 calls)\n- `npm run update-symbols-global` - Fallback (0 calls, GitHub)\n- `npm run update-symbols` - US only (0 calls, GitHub)\n\n## Benefits\n✅ Fresh data from FMP (daily updates possible)\n✅ 22+ exchanges covered (vs 4 with GitHub only)\n✅ Zero API calls for search autocomplete\n✅ International exchange support (LSE, JPX, ASX, FSX, etc.)\n✅ Smart categorization and filtering\n✅ Backward compatible with existing code\n\n## Resolves\n- Need for frequently updated symbol data\n- Limited exchange coverage (GitHub only had US + AU)\n- API call waste during search (now 0 calls)\n- International exchange support request\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(npm run update-symbols-global:*)",
+      "Bash(node test-websocket-simple.js:*)",
+      "Bash(node test-websocket-cache.js:*)",
+      "Bash(node download-analyst-coverage.js:*)",
+      "Bash(pkill:*)",
+      "Bash(node --check:*)",
+      "Bash(npm run dev:*)",
+      "Bash(cat:*)",
+      "Bash(npx eslint:*)",
+      "Bash(curl:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []
