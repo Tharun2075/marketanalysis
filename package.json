@@ -14,7 +14,8 @@
     "build-cache-fmp": "node build-cache-fmp-comprehensive.js basic",
     "build-cache-fmp:international": "node build-cache-fmp-comprehensive.js international",
     "build-cache-fmp:comprehensive": "node build-cache-fmp-comprehensive.js comprehensive",
-    "build-cache-fmp:full": "node build-cache-fmp-comprehensive.js full"
+    "build-cache-fmp:full": "node build-cache-fmp-comprehensive.js full",
+    "update-analyst-coverage": "node download-analyst-coverage.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

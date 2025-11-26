@@ -1,97 +1,103 @@
 import React from 'react';
+import { TrendingUp, TrendingDown, Target, ArrowRight } from 'lucide-react';
 import { calculateUpside } from '../utils/formatters';
 
 /**
  * PriceTargetChart Component
- * Visual representation of analyst price targets
+ * Compact display of analyst price targets with clear upside/downside indication
  */
 const PriceTargetChart = ({ targets }) => {
   const { low, average, high, current } = targets;
 
-  const safeLow = low || current * 0.9;
-  const safeHigh = high || current * 1.1;
-  const safeAvg = average || current;
+  // Handle missing data gracefully
+  if (!current || (!low && !average && !high)) {
+    return (
+      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-center text-slate-500 text-sm">
+        Price target data not available
+      </div>
+    );
+  }
 
-  const minRange = Math.min(safeLow, current) * 0.9;
-  const maxRange = Math.max(safeHigh, current) * 1.1;
-  const totalRange = maxRange - minRange;
-
-  const getPos = (val) => {
-    if (totalRange === 0) return 50;
-    return ((val - minRange) / totalRange) * 100;
-  };
-
-  const upside = calculateUpside(current, safeAvg);
+  const upside = calculateUpside(current, average);
   const isPositive = upside >= 0;
 
   return (
-    <div className="mt-6 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
-      <div className="flex justify-between items-end mb-8">
-        <div>
-          <h3 className="text-lg font-bold text-slate-800">Analyst Price Targets (12 Month)</h3>
-          <p className="text-slate-500 text-sm">Based on recent analyst reports</p>
-        </div>
-        <div className="text-right">
-          <div className="text-sm text-slate-500">Average Upside</div>
-          <div className={`text-xl font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {isPositive ? '+' : ''}{upside.toFixed(2)}%
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Header with main insight */}
+      <div className={`px-5 py-4 ${isPositive ? 'bg-green-50' : 'bg-red-50'} border-b border-slate-100`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${isPositive ? 'bg-green-100' : 'bg-red-100'}`}>
+              {isPositive ? (
+                <TrendingUp className="w-5 h-5 text-green-600" />
+              ) : (
+                <TrendingDown className="w-5 h-5 text-red-600" />
+              )}
+            </div>
+            <div>
+              <div className="text-sm text-slate-600">Analyst Consensus Target</div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-slate-900">${average?.toFixed(2) || '—'}</span>
+                <span className={`text-lg font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                  ({isPositive ? '+' : ''}{upside.toFixed(1)}%)
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-slate-500 uppercase tracking-wide">Current</div>
+            <div className="text-lg font-medium text-slate-700">${current?.toFixed(2)}</div>
           </div>
         </div>
       </div>
 
-      <div className="relative h-16 w-full mt-4">
-        {/* Base Line */}
-        <div className="absolute top-1/2 left-0 right-0 h-2 bg-slate-100 rounded-full -translate-y-1/2 overflow-hidden">
-          <div
-            className="absolute h-full bg-slate-200"
-            style={{ left: `${getPos(safeLow)}%`, right: `${100 - getPos(safeHigh)}%` }}
-          />
-        </div>
-
-        {/* Low Target */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 flex flex-col items-center"
-          style={{ left: `${getPos(safeLow)}%` }}
-        >
-          <div className="w-1 h-4 bg-slate-400 mb-1" />
-          <div className="text-xs font-medium text-slate-500 mt-2">${safeLow.toFixed(2)}</div>
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider">Low</div>
-        </div>
-
-        {/* High Target */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 flex flex-col items-center"
-          style={{ left: `${getPos(safeHigh)}%` }}
-        >
-          <div className="w-1 h-4 bg-slate-400 mb-1" />
-          <div className="text-xs font-medium text-slate-500 mt-2">${safeHigh.toFixed(2)}</div>
-          <div className="text-[10px] text-slate-400 uppercase tracking-wider">High</div>
-        </div>
-
-        {/* Average Target */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 z-10 flex flex-col items-center group cursor-pointer"
-          style={{ left: `${getPos(safeAvg)}%` }}
-        >
-          <div className="w-4 h-4 rounded-full bg-blue-600 border-4 border-white shadow-md" />
-          <div className="absolute -top-8 bg-blue-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            Average: ${safeAvg.toFixed(2)}
+      {/* Price Range */}
+      <div className="px-5 py-4">
+        <div className="flex items-center justify-between text-sm">
+          {/* Low */}
+          <div className="text-center">
+            <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Low</div>
+            <div className="font-semibold text-slate-600">${low?.toFixed(2) || '—'}</div>
+            {low && current && (
+              <div className={`text-xs mt-0.5 ${low < current ? 'text-red-500' : 'text-green-500'}`}>
+                {((low - current) / current * 100).toFixed(0)}%
+              </div>
+            )}
           </div>
-          <div className="text-xs font-bold text-blue-700 mt-2">${safeAvg.toFixed(2)}</div>
-          <div className="text-[10px] text-blue-600 uppercase tracking-wider">Avg</div>
-        </div>
 
-        {/* Current Price Indicator */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
-          style={{ left: `${getPos(current)}%` }}
-        >
-          <div className="relative">
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-bold py-1 px-2 rounded">
-              Now
+          {/* Arrow */}
+          <div className="flex-1 mx-4">
+            <div className="h-1.5 bg-gradient-to-r from-red-200 via-slate-200 to-green-200 rounded-full relative">
+              {/* Current price marker */}
+              {current && low && high && (
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-slate-800 rounded-full border-2 border-white shadow"
+                  style={{
+                    left: `${Math.min(Math.max(((current - low) / (high - low)) * 100, 0), 100)}%`,
+                    transform: 'translate(-50%, -50%)'
+                  }}
+                  title={`Current: $${current.toFixed(2)}`}
+                />
+              )}
             </div>
-            <div className="w-0.5 h-10 bg-slate-800 border-l-2 border-dashed border-slate-800 opacity-50" />
           </div>
+
+          {/* High */}
+          <div className="text-center">
+            <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">High</div>
+            <div className="font-semibold text-slate-600">${high?.toFixed(2) || '—'}</div>
+            {high && current && (
+              <div className={`text-xs mt-0.5 ${high > current ? 'text-green-500' : 'text-red-500'}`}>
+                +{((high - current) / current * 100).toFixed(0)}%
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 12-month note */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-center gap-1 text-xs text-slate-400">
+          <Target className="w-3 h-3" />
+          <span>12-month price targets from analyst reports</span>
         </div>
       </div>
     </div>
